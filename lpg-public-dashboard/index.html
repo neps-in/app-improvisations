@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sahaj Gas — Delivery Queue</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #F5F2EA;
+  --surface: #FFFFFF;
+  --line: #E3DDCC;
+  --ink: #221F19;
+  --muted: #7A7263;
+  --deep: #163A4D;
+  --deep-2: #1F5170;
+  --flame: #E1601F;
+  --flame-dark: #B94A16;
+
+  --brand-blue: #0B4A8F;
+  --brand-orange: #F2871F;
+
+  --booked-bg: #ECE8DC;   --booked-fg: #6B6350;
+  --invoiced-bg: #F6E7C8; --invoiced-fg: #92661B;
+  --transit-bg: #D9E9EF;  --transit-fg: #1F5F7D;
+  --delivered-bg: #DDEBDA;--delivered-fg: #386B41;
+  --canceled-bg: #F3DEDA; --canceled-fg: #A23A2A;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{background:var(--bg); color:var(--ink); font-family:'Sora',ui-sans-serif,sans-serif;}
+body{padding:32px 40px 80px; min-height:100vh;}
+.mono{font-family:'JetBrains Mono', ui-monospace, monospace;}
+
+/* ---------- Header ---------- */
+.masthead{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  border-bottom:3px solid var(--deep); padding-bottom:18px; margin-bottom:28px;
+  flex-wrap:wrap; gap:16px;
+}
+.brand{display:flex; align-items:center; gap:14px;}
+.flame-mark{
+  width:44px; height:44px; border-radius:10px;
+  background: var(--brand-blue);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; position:relative;
+}
+.flame-mark::after{
+  content:""; position:absolute; right:-3px; bottom:-3px;
+  width:14px; height:14px; border-radius:50%; background:var(--brand-orange);
+  border:2px solid var(--bg);
+}
+.flame-mark svg{width:22px; height:22px;}
+.wordmark{display:flex; flex-direction:column;}
+.wordmark .name{
+  font-size:23px; font-weight:800; letter-spacing:-0.02em; color:var(--brand-blue); line-height:1;
+}
+.wordmark .name span{color:var(--brand-orange);}
+.wordmark .tag{font-size:11.5px; color:var(--muted); margin-top:4px; font-weight:600; letter-spacing:.02em;}
+.masthead-right{display:flex; flex-direction:column; align-items:flex-end; gap:7px;}
+.viewing-tag{
+  font-size:12px; font-weight:600; color:var(--deep);
+}
+.viewing-tag .mono{color:var(--muted); font-weight:500;}
+.date-chip{
+  font-size:13px; color:var(--deep); background:var(--surface);
+  border:1px solid var(--line); border-radius:999px; padding:7px 16px;
+  font-weight:500;
+}
+.date-chip .mono{color:var(--muted); margin-left:6px;}
+
+/* ---------- Stat strip ---------- */
+.stats{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:32px;
+}
+.stat{
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px 20px; position:relative; overflow:hidden;
+}
+.stat .num{font-size:30px; font-weight:800; font-family:'JetBrains Mono',monospace; letter-spacing:-0.02em;}
+.stat .lbl{font-size:12.5px; color:var(--muted); margin-top:4px; font-weight:500;}
+.stat.warn .num{color:var(--flame-dark);}
+.stat.good .num{color:var(--delivered-fg);}
+.stat::after{
+  content:""; position:absolute; right:-10px; top:-10px; width:70px; height:70px;
+  border-radius:50%; background:var(--bg); opacity:.5;
+}
+
+/* ---------- Controls ---------- */
+.controls{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:16px; gap:16px; flex-wrap:wrap;
+}
+.search{
+  flex:1; min-width:220px; max-width:340px;
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  padding:9px 14px; font-size:13.5px; font-family:'Sora',sans-serif; color:var(--ink);
+}
+.search:focus{outline:none; border-color:var(--deep-2);}
+
+.left-controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+
+.agency-select{
+  position:relative; min-width:190px;
+}
+.agency-select select{
+  width:100%; appearance:none; -webkit-appearance:none;
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  padding:9px 34px 9px 14px; font-size:13.5px; font-family:'Sora',sans-serif;
+  color:var(--ink); font-weight:600; cursor:pointer;
+}
+.agency-select select:focus{outline:none; border-color:var(--deep-2);}
+.agency-select::after{
+  content:""; position:absolute; right:13px; top:50%; margin-top:-3px;
+  width:7px; height:7px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted);
+  transform:rotate(45deg); pointer-events:none;
+}
+.agency-dot{
+  display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;
+}
+.chips{display:flex; gap:8px; flex-wrap:wrap;}
+.chip{
+  font-size:12.5px; font-weight:600; padding:7px 14px; border-radius:999px;
+  border:1px solid var(--line); background:var(--surface); color:var(--muted);
+  cursor:pointer; user-select:none; transition:transform .12s ease;
+}
+.chip:hover{transform:translateY(-1px);}
+.chip.active{background:var(--deep); border-color:var(--deep); color:#fff;}
+
+/* ---------- Table ---------- */
+.table-wrap{
+  background:var(--surface); border:1px solid var(--line); border-radius:14px;
+  overflow:hidden;
+}
+table{width:100%; border-collapse:collapse;}
+thead th{
+  text-align:left; font-size:11.5px; font-weight:600; color:var(--muted);
+  padding:13px 18px; border-bottom:1px solid var(--line); background:#FBFAF6;
+  letter-spacing:.02em;
+}
+tbody td{
+  padding:15px 18px; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:middle;
+}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#FCFBF7;}
+.id-cell{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--deep);}
+.name-cell .full{font-weight:600;}
+.name-cell .loc{display:block; font-size:11.5px; color:var(--muted); margin-top:2px;}
+.pos{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:8px; background:var(--bg);
+  font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12.5px; color:var(--deep);
+  border:1px solid var(--line);
+}
+.pos.now{background:var(--flame); color:#fff; border-color:var(--flame);}
+
+.badge{
+  display:inline-block; font-size:11.5px; font-weight:700; padding:5px 10px;
+  border-radius:6px; letter-spacing:.01em; white-space:nowrap;
+}
+.badge.booked{background:var(--booked-bg); color:var(--booked-fg);}
+.badge.invoiced{background:var(--invoiced-bg); color:var(--invoiced-fg);}
+.badge.transit{background:var(--transit-bg); color:var(--transit-fg);}
+.badge.delivered{background:var(--delivered-bg); color:var(--delivered-fg);}
+.badge.canceled{background:var(--canceled-bg); color:var(--canceled-fg);}
+
+.stepper{display:flex; align-items:center; gap:3px; margin-top:7px;}
+.stepper .seg{width:16px; height:4px; border-radius:2px; background:var(--line);}
+.stepper .seg.done{background:var(--deep-2);}
+.stepper .seg.now{background:var(--flame);}
+.stepper .seg.dead{background:var(--canceled-fg); opacity:.5;}
+
+.eta{font-family:'JetBrains Mono',monospace; font-size:12.5px;}
+.eta .rel{display:block; font-size:11px; color:var(--muted); font-family:'Sora',sans-serif; margin-top:1px;}
+.eta.late .rel{color:var(--flame-dark); font-weight:600;}
+
+.col-gas{display:none;}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 680px){
+  body{padding:20px 14px 60px;}
+
+  .stats{grid-template-columns:1fr; gap:10px;}
+  .stat{padding:14px 16px;}
+
+  .masthead{padding-bottom:14px; margin-bottom:20px;}
+  .wordmark .name{font-size:19px;}
+  .masthead-right{align-items:flex-start;}
+
+  .controls{flex-direction:column; align-items:stretch;}
+  .left-controls{flex-direction:column; align-items:stretch;}
+  .agency-select{min-width:0;}
+  .search{max-width:none;}
+  .chips{overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px;}
+  .chip{flex-shrink:0;}
+
+  table{table-layout:fixed;}
+  thead th{padding:9px 8px; font-size:10px;}
+  tbody td{padding:10px 8px; font-size:12px;}
+
+  .col-name, .col-eta{display:none;}
+  .col-gas{display:table-cell;}
+
+  .col-id{width:26%;}
+  .col-gas{width:26%;}
+  .col-pos{width:16%;}
+  .col-status{width:32%;}
+
+  .id-cell, .gas-cell{font-size:10.5px; word-break:break-all;}
+  .pos{width:26px; height:26px; font-size:11px;}
+  .badge{font-size:10px; padding:4px 7px;}
+  .stepper{display:none;}
+}
+
+.empty{
+  padding:60px 20px; text-align:center; color:var(--muted); font-size:13.5px;
+}
+
+footer{margin-top:22px; font-size:11.5px; color:var(--muted); text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="brand">
+    <div class="flame-mark">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-2 .3 2-.7 3-2 3-1.6 0-2.5-1.2-2-3 .6-2.4-.3-3.8-1-5z" fill="white"/>
+        <path d="M8 14a4 4 0 1 0 8 0c0-1.4-.7-2.2-1.2-3-.1 1.6-1 2.4-2 2.4S11 12.6 10.8 11c-1 1-2.8 1.6-2.8 3z" fill="white" opacity=".85"/>
+      </svg>
+    </div>
+    <div class="wordmark">
+      <div class="name">Indan<span>e</span></div>
+      <div class="tag">Authorised distributor network · Delivery queue</div>
+    </div>
+  </div>
+  <div class="masthead-right">
+    <div class="date-chip">Updated <span class="mono" id="now-time"></span></div>
+    <div class="viewing-tag">Viewing: <span class="mono" id="agency-tag">All agencies</span></div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num" id="stat-total">—</div><div class="lbl">In the queue today</div></div>
+  <div class="stat"><div class="num" id="stat-transit">—</div><div class="lbl">Out for delivery now</div></div>
+  <div class="stat good"><div class="num" id="stat-delivered">—</div><div class="lbl">Delivered today</div></div>
+  <div class="stat warn"><div class="num" id="stat-late">—</div><div class="lbl">Running past ETA</div></div>
+</div>
+
+<div class="controls">
+  <div class="left-controls">
+    <div class="agency-select">
+      <select id="agency"></select>
+    </div>
+    <input class="search" id="search" placeholder="Search by name, booking ID or area…" />
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="col-id" style="width:130px;">Booking ID</th>
+        <th class="col-gas">Gas connection ID</th>
+        <th class="col-name">Customer</th>
+        <th class="col-pos" style="width:150px;">Queue position</th>
+        <th class="col-status" style="width:150px;">Status</th>
+        <th class="col-eta" style="width:150px;">Est. delivery</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none;">No bookings match that search.</div>
+</div>
+
+<footer>Positions update automatically as cylinders are dispatched. Delayed orders are flagged for the local distributor to act on.</footer>
+
+<script>
+const STAGES = ["booked","invoiced","transit","delivered"];
+const STATUS_LABEL = { booked:"Booked", invoiced:"Invoiced", transit:"Out for delivery", delivered:"Delivered", canceled:"Canceled" };
+
+const NAMES = ["Meera Krishnan","Arun Prakash","Fathima Beevi","Suresh Kumar","Lakshmi Narayanan",
+"Vignesh Raj","Priya Dharshini","Mohammed Iqbal","Kavitha Selvam","Ramesh Iyer",
+"Anitha Balan","Senthil Murugan","Deepa Rajendran","Karthik Subramanian","Nasreen Begum",
+"Gopal Krishnan","Uma Maheswari","Vijayakumar Pillai","Shanthi Devi","Rajesh Anand",
+"Bhavani Shankar","Selvi Muthu","Thangaraj Velu","Padma Venkatesan","Irfan Sheikh"];
+
+const AREAS = ["Muthialpet","Lawspet","Reddiarpalayam","Ariyankuppam","Ozhukarai","Kalapet","Villianur","Mudaliarpet","Thattanchavady","Nellithope"];
+
+const AGENCIES = [
+  { key:"ram",      name:"Ram Agency",     city:"Puducherry",  state:"Puducherry",  prefix:"RAM", deep:"#163A4D", deep2:"#1F5170", flame:"#1F7A5C", flameDark:"#155A43" },
+  { key:"kumar",    name:"Kumar Agency",   city:"Cuddalore",   state:"Tamil Nadu",  prefix:"KUM", deep:"#1C3D6B", deep2:"#25528D", flame:"#E1601F", flameDark:"#B94A16" },
+  { key:"prabas",   name:"Prabas Agency",  city:"Villupuram",  state:"Tamil Nadu",  prefix:"PRB", deep:"#5C2A1C", deep2:"#7A3A26", flame:"#C23B2E", flameDark:"#932B21" },
+  { key:"avadi",    name:"Avadi",          city:"Chennai",     state:"Tamil Nadu",  prefix:"AVD", deep:"#1E4A4A", deep2:"#2A6363", flame:"#2F8F8F", flameDark:"#206868" },
+  { key:"ambatur",  name:"Ambatur",        city:"Chennai",     state:"Tamil Nadu",  prefix:"AMB", deep:"#3B2E5A", deep2:"#4F3E78", flame:"#7C5CBF", flameDark:"#5E42A0" },
+  { key:"washermenpet", name:"Washermenpet", city:"Chennai",   state:"Tamil Nadu",  prefix:"WSP", deep:"#4A3B14", deep2:"#63501D", flame:"#B8860B", flameDark:"#8F6A08" },
+  { key:"viyarsarpadi", name:"Viyarsarpadi", city:"Chennai",   state:"Tamil Nadu",  prefix:"VYP", deep:"#1F3A52", deep2:"#2A4F6E", flame:"#3E7CA6", flameDark:"#2E5F82" }
+];
+
+function pad(n){return String(n).padStart(4,"0");}
+function gasConnId(i){
+  return String(400115000 + i * 913);
+}
+
+function genBookings(n){
+  const list = [];
+  const today = new Date();
+  for(let i=0;i<n;i++){
+    const name = NAMES[i % NAMES.length];
+    const area = AREAS[i % AREAS.length];
+    const agency = AGENCIES[i % AGENCIES.length];
+    const id = agency.prefix + "26-" + pad(4210 + i);
+
+    // distribute statuses realistically: most booked/invoiced, a few in transit, some delivered, rare cancels
+    let status;
+    const r = i % 11;
+    if(r === 0) status = "delivered";
+    else if(r === 1 || r === 5) status = "transit";
+    else if(r === 9) status = "canceled";
+    else if(r % 2 === 0) status = "invoiced";
+    else status = "booked";
+
+    const bookedDaysAgo = 1 + (i % 7);
+    const bookedDate = new Date(today); bookedDate.setDate(today.getDate() - bookedDaysAgo);
+
+    // ETA: normally 2-4 days from booking, but some slip further (the delay problem)
+    const normalWait = 2 + (i % 3);
+    const delaySlip = (i % 13 === 0) ? 4 : (i % 7 === 0 ? 2 : 0);
+    const eta = new Date(bookedDate); eta.setDate(bookedDate.getDate() + normalWait + delaySlip);
+
+    list.push({
+      id, name, area, status, agency: agency.key,
+      gasId: gasConnId(i),
+      position: status === "delivered" || status === "canceled" ? null : 0,
+      eta, bookedDate, delaySlip
+    });
+  }
+  // assign queue position per agency, among active (non-final) orders, in ETA order
+  AGENCIES.forEach(ag => {
+    const active = list.filter(b => b.agency === ag.key && b.status !== "delivered" && b.status !== "canceled");
+    active.sort((a,b) => a.eta - b.eta);
+    active.forEach((b, idx) => b.position = idx + 1);
+  });
+  return list;
+}
+
+const bookings = genBookings(42);
+
+function fmtDate(d){
+  return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short" });
+}
+function relDay(d){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(d); target.setHours(0,0,0,0);
+  const diff = Math.round((target - today) / 86400000);
+  if(diff === 0) return "Today";
+  if(diff === 1) return "Tomorrow";
+  if(diff === -1) return "Was due yesterday";
+  if(diff < -1) return `Was due ${-diff}d ago`;
+  return `In ${diff} days`;
+}
+
+function stepperHtml(status){
+  const order = ["booked","invoiced","transit","delivered"];
+  if(status === "canceled"){
+    return `<div class="stepper">` + order.map(()=>`<div class="seg dead"></div>`).join("") + `</div>`;
+  }
+  const curIdx = order.indexOf(status);
+  return `<div class="stepper">` + order.map((s,i)=>{
+    let cls = "seg";
+    if(i < curIdx) cls += " done";
+    else if(i === curIdx) cls += " now";
+    return `<div class="${cls}"></div>`;
+  }).join("") + `</div>`;
+}
+
+let activeFilter = "all";
+let searchTerm = "";
+let agencyFilter = "all";
+
+function currentSet(){
+  return agencyFilter === "all" ? bookings : bookings.filter(b => b.agency === agencyFilter);
+}
+
+function render(){
+  const rowsEl = document.getElementById("rows");
+  const emptyEl = document.getElementById("empty");
+
+  let filtered = currentSet().filter(b => activeFilter === "all" || b.status === activeFilter);
+  if(searchTerm.trim()){
+    const q = searchTerm.toLowerCase();
+    filtered = filtered.filter(b =>
+      b.name.toLowerCase().includes(q) ||
+      b.id.toLowerCase().includes(q) ||
+      b.area.toLowerCase().includes(q)
+    );
+  }
+  filtered = filtered.slice().sort((a,b) => {
+    if(a.position === null && b.position === null) return a.eta - b.eta;
+    if(a.position === null) return 1;
+    if(b.position === null) return -1;
+    return a.position - b.position;
+  });
+
+  if(filtered.length === 0){
+    rowsEl.innerHTML = "";
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  rowsEl.innerHTML = filtered.map(b => {
+    const isLate = (b.status !== "delivered" && b.status !== "canceled") && b.eta < new Date().setHours(0,0,0,0);
+    const posHtml = b.position === null
+      ? `<span class="pos" style="opacity:.35;">—</span>`
+      : `<span class="pos ${b.position <= 3 ? 'now' : ''}">${b.position}</span>`;
+
+    const badgeClass = b.status === "transit" ? "transit" : b.status;
+
+    return `
+      <tr>
+        <td class="id-cell col-id">${b.id}</td>
+        <td class="gas-cell col-gas mono">${b.gasId}</td>
+        <td class="name-cell col-name">
+          <span class="full">${b.name}</span>
+          <span class="loc">${b.area}, Puducherry</span>
+        </td>
+        <td class="col-pos">${posHtml}</td>
+        <td class="col-status">
+          <span class="badge ${badgeClass}">${STATUS_LABEL[b.status]}</span>
+          ${stepperHtml(b.status)}
+        </td>
+        <td class="col-eta">
+          <div class="eta ${isLate ? 'late' : ''}">
+            ${fmtDate(b.eta)}
+            <span class="rel">${b.status === 'delivered' ? 'Delivered' : b.status === 'canceled' ? 'Canceled' : relDay(b.eta)}</span>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+function renderStats(){
+  const set = currentSet();
+  const total = set.filter(b => b.status !== "canceled").length;
+  const transit = set.filter(b => b.status === "transit").length;
+  const delivered = set.filter(b => b.status === "delivered").length;
+  const late = set.filter(b => (b.status !== "delivered" && b.status !== "canceled") && b.eta < new Date().setHours(0,0,0,0)).length;
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-transit").textContent = transit;
+  document.getElementById("stat-delivered").textContent = delivered;
+  document.getElementById("stat-late").textContent = late;
+}
+
+function renderChips(){
+  const set = currentSet();
+  const counts = { all: set.length };
+  STAGES.concat("canceled").forEach(s => counts[s] = set.filter(b => b.status === s).length);
+  const defs = [
+    ["all","All"],["booked","Booked"],["invoiced","Invoiced"],
+    ["transit","Out for delivery"],["delivered","Delivered"],["canceled","Canceled"]
+  ];
+  const chipsEl = document.getElementById("chips");
+  chipsEl.innerHTML = defs.map(([key,label]) =>
+    `<div class="chip ${activeFilter===key?'active':''}" data-key="${key}">${label} · ${counts[key]}</div>`
+  ).join("");
+  chipsEl.querySelectorAll(".chip").forEach(el => {
+    el.addEventListener("click", () => {
+      activeFilter = el.dataset.key;
+      renderChips();
+      render();
+    });
+  });
+}
+
+document.getElementById("search").addEventListener("input", (e) => {
+  searchTerm = e.target.value;
+  render();
+});
+
+function applyTheme(agencyKey){
+  const root = document.documentElement.style;
+  if(agencyKey === "all"){
+    root.setProperty("--deep", "#163A4D");
+    root.setProperty("--deep-2", "#1F5170");
+    root.setProperty("--flame", "#E1601F");
+    root.setProperty("--flame-dark", "#B94A16");
+    document.getElementById("agency-tag").textContent = "All agencies";
+    return;
+  }
+  const ag = AGENCIES.find(a => a.key === agencyKey);
+  root.setProperty("--deep", ag.deep);
+  root.setProperty("--deep-2", ag.deep2);
+  root.setProperty("--flame", ag.flame);
+  root.setProperty("--flame-dark", ag.flameDark);
+  document.getElementById("agency-tag").textContent = ag.name + " · " + ag.city;
+}
+
+function populateAgencySelect(){
+  const sel = document.getElementById("agency");
+  const opts = [`<option value="all">All agencies</option>`].concat(
+    AGENCIES.map(ag => `<option value="${ag.key}">${ag.name}, ${ag.city}</option>`)
+  );
+  sel.innerHTML = opts.join("");
+  sel.addEventListener("change", (e) => {
+    agencyFilter = e.target.value;
+    activeFilter = "all";
+    applyTheme(agencyFilter);
+    renderStats();
+    renderChips();
+    render();
+  });
+}
+
+document.getElementById("now-time").textContent = new Date().toLocaleString("en-IN", {
+  day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"
+});
+
+populateAgencySelect();
+renderStats();
+renderChips();
+render();
+</script>
+</body>
+</html>

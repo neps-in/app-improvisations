@@ -1,51 +1,43 @@
-# LPG Cylinder Delivery Queue Dashboard
+# App Improvisation
 
-## Problem
+A collection of application improvisations and variations, focused on exploring better approaches to **UI design** and **functionality**.
 
-LPG cylinder delivery in India frequently runs delayed, and customers have
-little to no visibility into why. A booking is placed, and after that the
-process is a black box — there's no way to know:
+## Overview
 
-- Where the order stands in the delivery queue
-- Whether it has moved from booked → invoiced → out for delivery
-- What the realistic delivery date actually is, versus the date originally promised
-- Whether a specific order has silently slipped past its expected date
+This repository serves as a working collection of experiments and iterations built on top of existing applications. Rather than a single, fixed product, it houses multiple variants — each exploring a different take on interface design, interaction patterns, or AI-driven features.
 
-This lack of transparency erodes trust in the local distributor and leads to
-repeated phone calls and follow-ups that could be avoided with a simple
-status view.
+## What's Inside
 
-## Solution
+- **UI Improvisations** — Alternative layouts, interaction flows, and design experiments applied to existing applications.
+- **Functionality Variants** — Different implementations and approaches to AI-powered features (e.g. assistants, automation, intelligent workflows) layered onto the base applications.
+- **Application Variants** — Multiple versions/forks of applications, each demonstrating a specific improvisation or idea.
 
-A single-page, self-contained dashboard that gives both customers and the
-distributor's staff a live, at-a-glance view of the delivery queue:
+## Purpose
 
-- **Queue position** — computed by expected delivery date, so it reflects
-  actual dispatch order rather than just booking order
-- **Status pipeline** — Booked → Invoiced → Out for Delivery → Delivered
-  (or Canceled), shown as a badge plus a compact progress stepper per row
-- **Delay flagging** — any order past its estimated delivery date is
-  highlighted automatically, surfacing exactly which deliveries need
-  attention
-- **Agency selection** — multiple agency offices (Ram Agency, Kumar Agency,
-  Prabas Agency, plus the Chennai-area agencies: Avadi, Ambatur,
-  Washermenpet, Viyarsarpadi) can be filtered from one dropdown, each with
-  its own queue, city/state, and accent color
-- **Search & filter** — find any booking by name, booking ID, or area,
-  and filter by status
-- **Mobile-friendly** — on small screens the table condenses to just
-  Booking ID, Gas Connection ID, Queue Position, and Status, and the
-  summary metric cards stack full-width instead of a 4-column grid
+The goal of this repository is to:
 
-## Brief
+- Experiment quickly with new UI and AI ideas without disrupting a main/production codebase.
+- Keep a record of design and functionality variations for future reference.
+- Serve as a sandbox for testing what works before deciding what gets merged into a primary application.
 
-- **Format:** Single static HTML file (`index.html`) — HTML, CSS, and
-  vanilla JS, no build step or backend required
-- **Data:** Currently uses generated mock bookings for demonstration;
-  intended to be wired up to a real orders API (e.g. a Django backend)
-  for production use
-- **Deployment:** Static-hosting ready — deployable as-is to Vercel,
-  Netlify, or any static file host
-- **Audience:** LPG customers wanting transparency into their delivery
-  status, and distributor staff needing a quick operational view of the
-  queue
+## Structure
+
+> Update this section with the actual folder/file layout once finalized.
+
+```
+├── lpg-public-dashboard/
+├── lpg-public-dashboard/README.md
+
+├── app-variant-2/
+├── ui-experiments/
+├── ai-functionality/
+└── README.md
+```
+
+## Getting Started
+
+> Add setup instructions specific to this repository (installation, dependencies, how to run a given variant, etc.)
+
+## Notes
+
+This is a living repository — new improvisations and experiments will be added over time as ideas are explored.
